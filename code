@@ -1,0 +1,49 @@
+library(ggplot2)
+library(dplyr)
+library(DESeq2)
+library(pathview)
+
+#Raw counts
+mirna <- read.csv("D:/Ashraf/2024/Dr. Sameh Ali/Covid/miRNA/Omar/Count.csv", row.names = 1)
+#Metadata
+meta <- read.csv("Clinical.csv")
+colnames(mirna) <- meta$Sample
+
+#Statistical differential expression (DESeq2)
+dds <- DESeqDataSetFromMatrix(countData = mirna, colData = meta, design = ~Condition)
+dds.run <- DESeq(dds)
+res <- results(dds.run, contrast = c("Condition", "Dead", "Alive"), alpha = 0.05)
+res <- res[complete.cases(res), ]
+deseqDE <- as.data.frame(res)
+sig <-deseqDE[deseqDE$padj < 0.05, ]
+
+#miRNA gene targets from mirCarta database
+targets <- read.csv("miRCarta - targets.csv")
+#mapping gene symbols to ids
+map <- read.csv("neu hits mapping to id.csv")
+targets$id <- map$To[match(targets$Gene.name, map$From)]
+targets$fc <- -1* sig$log2FoldChange[match(targets$miRNA,rownames(sig)) ]
+geneFc <- aggregate(targets[,5:6]$fc, by = list(targets[,5:6]$id), FUN = mean)
+colnames(geneFc) <- c('gene.id', 'fc')
+
+##Pathview
+#Gene list for pathview
+genelist <- geneFc$fc
+names(genelist) <- geneFc$gene.id
+#Generate Figure
+pathview(gene.data = genelist, pathway.id = 'hsa04210', species = "hsa", cex = 0.1,res = 1200)
+
+
+#lollipop plot for significant
+sig$miRNAs <- row.names(sig)
+ggplot(sig, aes(x = reorder(miRNAs, log2FoldChange), y = log2FoldChange)) +
+  geom_segment(aes(x = miRNAs, xend = miRNAs, y = 0, yend = log2FoldChange), color = "gray8", size = 0.5, ) +
+  geom_point(aes(size = padj, color = cut(log2FoldChange, c(-10, 0, 10)))) +
+  scale_size(trans = "reverse",range = c(0.5, 4), name = 'Adjusted p value') +
+  scale_color_manual(name = "Up/Down regulated", values = c("(0,10]" ="red", "(-10,0]" =  "green"),
+    labels = c("Down-regulated","Up-regulated")) + theme(legend.position = "right") +
+  theme_light() + theme(axis.text = element_text(size = 14), axis.title = element_text(size = 16, face = "bold"),
+        panel.grid.major.x = element_blank(), panel.border = element_blank(), legend.title = element_text(size = 12), 
+        legend.text = element_text(size = 10), axis.ticks.x = element_blank(),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+ xlab("miRNA names")+ ylab("log2 Fold Change") 
+ggsave("C:/Users/drash/Desktop/lollipop.tiff" ,dpi = 1200)
