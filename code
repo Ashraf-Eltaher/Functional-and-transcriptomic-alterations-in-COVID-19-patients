@@ -4,7 +4,7 @@ library(DESeq2)
 library(pathview)
 
 #Raw counts
-mirna <- read.csv("D:/Ashraf/2024/Dr. Sameh Ali/Covid/miRNA/Omar/Count.csv", row.names = 1)
+mirna <- read.csv("Count.csv", row.names = 1)
 #Metadata
 meta <- read.csv("Clinical.csv")
 colnames(mirna) <- meta$Sample
@@ -46,4 +46,4 @@ ggplot(sig, aes(x = reorder(miRNAs, log2FoldChange), y = log2FoldChange)) +
         panel.grid.major.x = element_blank(), panel.border = element_blank(), legend.title = element_text(size = 12), 
         legend.text = element_text(size = 10), axis.ticks.x = element_blank(),
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+ xlab("miRNA names")+ ylab("log2 Fold Change") 
-ggsave("C:/Users/drash/Desktop/lollipop.tiff" ,dpi = 1200)
+ggsave("lollipop.tiff" ,dpi = 1200)
